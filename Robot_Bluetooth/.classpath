@@ -6,8 +6,8 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="lib" path="C:/Users/vonbarke/Downloads/jfreechart-1.0.19.jar"/>
-	<classpathentry kind="lib" path="C:/Users/vonbarke/Downloads/jcommon-1.0.23.jar"/>
-	<classpathentry kind="lib" path="C:/Users/vonbarke/Downloads/jSerialComm-2.8.5.jar"/>
+	<classpathentry kind="lib" path="C:/Users/mannanej/Downloads/jSerialComm-2.8.5.jar"/>
+	<classpathentry kind="lib" path="C:/Users/mannanej/Downloads/jfreechart-1.0.19/jfreechart-1.0.19/lib/jcommon-1.0.23.jar"/>
+	<classpathentry kind="lib" path="C:/Users/mannanej/Downloads/jfreechart-1.0.19/jfreechart-1.0.19/lib/jfreechart-1.0.19.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
