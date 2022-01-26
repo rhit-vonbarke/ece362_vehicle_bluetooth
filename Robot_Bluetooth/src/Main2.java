@@ -3,6 +3,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
+
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
@@ -15,7 +17,8 @@ import org.jfree.data.xy.XYSeriesCollection;
 import com.fazecast.jSerialComm.SerialPort;
 
 public class Main2 {
-
+	
+	public static final byte[] BT_NEWLINE = new byte[] { (byte) 0x0A };
 	static SerialPort chosenPort;
 	static int x = 0;
 
@@ -92,8 +95,7 @@ public class Main2 {
 						@Override
 						public void run() {
 							System.out.println("Made it to Run");
-							byte[] sendEnter = new byte[] { (byte) 0x0A };
-							chosenPort.writeBytes(sendEnter, 1);
+							chosenPort.writeBytes(BT_NEWLINE, 1);
 							Scanner scanner = new Scanner(chosenPort.getInputStream());
 							while (scanner.hasNextLine()) {
 								System.out.println("Has Next Line");
@@ -104,6 +106,8 @@ public class Main2 {
 									// series.add(x++, 1023 - number);
 									series.add(x++, 1023 - (Math.random() * 10));
 									window.repaint();
+									TimeUnit.SECONDS.sleep(1);
+									chosenPort.writeBytes(BT_NEWLINE, 1);
 								} catch (Exception e) {
 									e.printStackTrace();
 								}
