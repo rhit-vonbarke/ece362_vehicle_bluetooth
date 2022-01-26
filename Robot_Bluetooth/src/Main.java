@@ -9,7 +9,7 @@ public class Main {
 		boolean endLoop = true;
 
 		System.out.println("START");
-		SerialPort robotPort = SerialPort.getCommPort(dataCOM); 
+		SerialPort robotPort = SerialPort.getCommPort(dataCOM);
 		robotPort.openPort();
 		robotPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 100, 0);
 		robotPort.setComPortTimeouts(SerialPort.TIMEOUT_WRITE_BLOCKING, 100, 0);
