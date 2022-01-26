@@ -21,6 +21,8 @@ public class Main2 {
 	public static final byte[] BT_NEWLINE = new byte[] { (byte) 0x0A };
 	static SerialPort chosenPort;
 	static int x = 0;
+	
+	
 
 	public static void main(String[] args) {
 
@@ -52,7 +54,7 @@ public class Main2 {
 		JFreeChart chart = ChartFactory.createXYLineChart("Current Readings", "Time (seconds)", "Current (mA)",
 				dataset);
 		window.add(new ChartPanel(chart), BorderLayout.CENTER);
-
+		
 		// configure the connect button and use another thread to listen for data
 		startButton.addActionListener(new ActionListener() {
 			@Override
@@ -104,7 +106,8 @@ public class Main2 {
 									System.out.println(line);
 									// int number = Integer.parseInt(line);
 									// series.add(x++, 1023 - number);
-									series.add(x++, 1023 - (Math.random() * 10));
+									VehicleDataPoint data = processInput(line, series);
+									series.add(x++, data.current);
 									window.repaint();
 									TimeUnit.SECONDS.sleep(1);
 									chosenPort.writeBytes(BT_NEWLINE, 1);
@@ -130,4 +133,36 @@ public class Main2 {
 		// show the window
 		window.setVisible(true);
 	}
+	
+	public static VehicleDataPoint processInput(String input, XYSeries series) {
+		switch(input.charAt(0)) {
+		case '#': //data
+			String[] dataSeg = input.split(":");
+			String milliStr = dataSeg[dataSeg.length-1];
+			int millis = Integer.valueOf(milliStr.substring(0,milliStr.length()-1));
+			return new VehicleDataPoint(dataSeg, millis);
+		default:
+			return null;
+		}		
+	}
+	
+	public static class VehicleDataPoint {
+		public double shuntVoltage;
+		public double busVoltage;
+		public double current;
+		public double power;
+		public double loadVoltage;
+		public int millis;
+		
+		public VehicleDataPoint(String[] data, int millis) {
+			this.shuntVoltage = Double.valueOf(data[0]);
+			this.busVoltage = Double.valueOf(data[1]);
+			this.current = Double.valueOf(data[2]);
+			this.power = Double.valueOf(data[3]);
+			this.loadVoltage = Double.valueOf(data[4]);
+			this.millis = millis;
+		}
+		
+	}
+	
 }
