@@ -20,24 +20,32 @@ public class Main2 {
 
 	public static final byte[] BT_NEWLINE = new byte[] { (byte) 0x0A };
 	static SerialPort chosenPort;
-	static int x = 0;
+	public static boolean flag = false;
+	public static boolean sPressed = false;
+	public static boolean kPressed = false;
 
 	public static void main(String[] args) {
 
 		// create and configure the window
 		JFrame window = new JFrame();
-		window.setTitle("Sensor Graph GUI");
-		window.setSize(600, 400);
+		window.setTitle("Energy Graph GUI");
 		window.setLayout(new BorderLayout());
+		window.setExtendedState(JFrame.MAXIMIZED_BOTH);
 		window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 		// create a drop-down box and connect button, then place them at the top of the
 		// window
 		JComboBox<String> portList = new JComboBox<String>();
-		JButton startButton = new JButton("Start");
+		JButton connectButton = new JButton("Connect");
+		JButton sButton = new JButton("Start Robot");
+		JButton dButton = new JButton("Debug Robot");
+		JButton kButton = new JButton("Kill Robot");
 		JPanel topPanel = new JPanel();
 		topPanel.add(portList);
-		topPanel.add(startButton);
+		topPanel.add(connectButton);
+		topPanel.add(sButton);
+		topPanel.add(dButton);
+		topPanel.add(kButton);
 		window.add(topPanel, BorderLayout.NORTH);
 
 		// populate the drop-down box
@@ -47,46 +55,30 @@ public class Main2 {
 		}
 
 		// create the line graph
-		XYSeries series = new XYSeries("Current");
+		XYSeries series = new XYSeries("Energy");
 		XYSeriesCollection dataset = new XYSeriesCollection(series);
-		JFreeChart chart = ChartFactory.createXYLineChart("Current Readings", "Time (seconds)", "Current (mA)",
-				dataset);
+		JFreeChart chart = ChartFactory.createXYLineChart("Energy Readings", "Time (seconds)", "Energy (J)", dataset);
 		window.add(new ChartPanel(chart), BorderLayout.CENTER);
 
 		// configure the connect button and use another thread to listen for data
-		startButton.addActionListener(new ActionListener() {
+		connectButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				if (startButton.getText().equals("Start")) {
+				if (connectButton.getText().equals("Connect")) {
 					// attempt to connect to the serial port
 					chosenPort = SerialPort.getCommPort(portList.getSelectedItem().toString());
 					chosenPort.setComPortParameters(115200, 8, 1, SerialPort.NO_PARITY);
 					chosenPort.setComPortTimeouts(SerialPort.TIMEOUT_SCANNER, 0, 0);
-					while (true) {
-						if (chosenPort.openPort()) {
-							System.out.println("Port is Open");
-							startButton.setText("Disconnect");
-							portList.setEnabled(false);
-//									try {
-//										TimeUnit.SECONDS.wait(10);
-//									} catch (InterruptedException e) {
-//										e.printStackTrace();
-//									}
-							while (true) {
-								try {
-									if (System.in.read() == 83) { // If the console gets an "S"
-										System.out.println("Got an S");
-										byte[] sendS = new byte[] { (byte) 0x53 };
-										chosenPort.writeBytes(sendS, 1);
-										break;
-									}
-								} catch (IOException e) {
-									e.printStackTrace();
-								}
+					if (!sPressed) {
+						while (true) {
+							if (chosenPort.openPort()) {
+								System.out.println("Port is Open");
+								connectButton.setText("Disconnect");
+								portList.setEnabled(false);
+								break;
+							} else {
+								// Wait until open
 							}
-							break;
-						} else {
-							// Wait until open
 						}
 					}
 
@@ -95,13 +87,14 @@ public class Main2 {
 						@Override
 						public void run() {
 							while (true) {
+								if (kPressed) {
+									System.out.println("Killing Robot");
+									chosenPort.closePort();
+									break;
+								}
 								System.out.println("Made it to Run");
 								chosenPort.writeBytes(BT_NEWLINE, 1);
-								try {
-									TimeUnit.SECONDS.sleep(1);
-								} catch (InterruptedException e) {
-									e.printStackTrace();
-								}
+
 								InputStream in = chosenPort.getInputStream();
 								StringBuilder builder = new StringBuilder();
 								char value = ' ';
@@ -117,14 +110,20 @@ public class Main2 {
 									}
 								}
 								System.out.println(builder.toString());
-								// System.out.println("Has Next Line");
-								// System.out.println(line);
-								// int number = Integer.parseInt(line);
-								// series.add(x++, 1023 - number);
-								series.add(x++, 1023 - (Math.random() * 10));
+								VehicleDataPoint newestPoint = processInput(builder.toString());
+								if (newestPoint != null) {
+									Double energy = (newestPoint.power / 1000) * (newestPoint.millis / 1000);
+									System.out.println(energy);
+									if (!flag) {
+										series.add(0, energy.intValue());
+										flag = true;
+									} else {
+										series.add(newestPoint.millis / 1000, energy.intValue());
+									}
+								} else {
+									System.out.println("NULL");
+								}
 								window.repaint();
-								// chosenPort.writeBytes(BT_NEWLINE, 1);
-								// System.out.println("Closing");
 							}
 						}
 					};
@@ -133,24 +132,46 @@ public class Main2 {
 					// disconnect from the serial port
 					chosenPort.closePort();
 					portList.setEnabled(true);
-					startButton.setText("Start");
+					connectButton.setText("Connect");
 					series.clear();
-					x = 0;
 				}
+			}
+		});
+
+		sButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				byte[] sendS = new byte[] { (byte) 0x53 };
+				chosenPort.writeBytes(sendS, 1);
+				sPressed = true;
+			}
+		});
+
+		kButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				byte[] sendK = new byte[] { (byte) 0x4B };
+				chosenPort.writeBytes(sendK, 1);
+				kPressed = true;
 			}
 		});
 		// show the window
 		window.setVisible(true);
 	}
 
-	public static VehicleDataPoint processInput(String input, XYSeries series) {
+	public static VehicleDataPoint processInput(String input) {
 		switch (input.charAt(0)) {
 		case '#': // data
 			String[] dataSeg = input.split(":");
-			String milliStr = dataSeg[dataSeg.length - 1];
-			int millis = Integer.valueOf(milliStr.substring(0, milliStr.length() - 1));
-			return new VehicleDataPoint(dataSeg, millis);
+			return new VehicleDataPoint(dataSeg);
+		case '!': // Command, car is starting or stopping
+			System.out.println("Car is Starting or Stopping");
+			return null;
+		case '?': // Getting information
+			System.out.println("Car is Sending Information");
+			return null;
 		default:
+			System.out.println(input.charAt(0));
 			return null;
 		}
 	}
@@ -161,15 +182,15 @@ public class Main2 {
 		public double current;
 		public double power;
 		public double loadVoltage;
-		public int millis;
+		public double millis;
 
-		public VehicleDataPoint(String[] data, int millis) {
-			this.shuntVoltage = Double.valueOf(data[0]);
-			this.busVoltage = Double.valueOf(data[1]);
-			this.current = Double.valueOf(data[2]);
-			this.power = Double.valueOf(data[3]);
-			this.loadVoltage = Double.valueOf(data[4]);
-			this.millis = millis;
+		public VehicleDataPoint(String[] data) {
+			this.shuntVoltage = Double.valueOf(data[1]);
+			this.busVoltage = Double.valueOf(data[2]);
+			this.current = Double.valueOf(data[3]);
+			this.power = Double.valueOf(data[4]);
+			this.loadVoltage = Double.valueOf(data[5]);
+			this.millis = Double.valueOf(data[6]);
 		}
 
 	}
