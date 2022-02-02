@@ -23,6 +23,7 @@ public class Main2 {
 	public static boolean flag = false;
 	public static boolean sPressed = false;
 	public static boolean kPressed = false;
+	public static double totalEnergy = 0; // use THIS for displaying total energy usage. this is not graphed
 
 	public static void main(String[] args) {
 
@@ -112,14 +113,14 @@ public class Main2 {
 								System.out.println(builder.toString());
 								VehicleDataPoint newestPoint = processInput(builder.toString());
 								if (newestPoint != null) {
-									Double energy = (newestPoint.power / 1000) * (newestPoint.millis / 1000);
-									System.out.println(energy);
+									System.out.println(newestPoint.energy);
 									if (!flag) {
-										series.add(0, energy.intValue());
+										series.add(0, (int)newestPoint.energy);
 										flag = true;
 									} else {
-										series.add(newestPoint.millis / 1000, energy.intValue());
+										series.add(newestPoint.millis / 1000, (int)newestPoint.energy);
 									}
+									totalEnergy += newestPoint.energy;
 								} else {
 									System.out.println("NULL");
 								}
@@ -182,7 +183,11 @@ public class Main2 {
 		public double current;
 		public double power;
 		public double loadVoltage;
-		public double millis;
+		public double millis; // this is the timestamp used for graphing
+		public double ellapsedMillis; // this is calculated at instantiation to be the elapsed time
+		public double energy;
+		
+		public static double lastMillis = 0;
 
 		public VehicleDataPoint(String[] data) {
 			this.shuntVoltage = Double.valueOf(data[1]);
@@ -191,8 +196,15 @@ public class Main2 {
 			this.power = Double.valueOf(data[4]);
 			this.loadVoltage = Double.valueOf(data[5]);
 			this.millis = Double.valueOf(data[6]);
+			this.ellapsedMillis = lastMillis - millis;
+			lastMillis = millis;
+			this.energy = this.energyCalculation();
 		}
 
+		// power * ellapsed time
+		public double energyCalculation() {
+			return power * ellapsedMillis;
+		}
 	}
 
 }
