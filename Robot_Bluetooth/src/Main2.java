@@ -58,7 +58,7 @@ public class Main2 {
 		// create the line graph
 		XYSeries series = new XYSeries("Energy");
 		XYSeriesCollection dataset = new XYSeriesCollection(series);
-		JFreeChart chart = ChartFactory.createXYLineChart("Energy Readings", "Time (seconds)", "Energy (J)", dataset);
+		JFreeChart chart = ChartFactory.createXYLineChart("Energy Readings", "Time (seconds)", "Energy (mJ)", dataset);
 		window.add(new ChartPanel(chart), BorderLayout.CENTER);
 
 		// configure the connect button and use another thread to listen for data
@@ -115,10 +115,10 @@ public class Main2 {
 								if (newestPoint != null) {
 									System.out.println(newestPoint.energy);
 									if (!flag) {
-										series.add(0, (int)newestPoint.energy);
+										series.add(0, newestPoint.energy);
 										flag = true;
 									} else {
-										series.add(newestPoint.millis / 1000, (int)newestPoint.energy);
+										series.add(newestPoint.millis / 1000, newestPoint.energy);
 									}
 									totalEnergy += newestPoint.energy;
 								} else {
@@ -186,7 +186,7 @@ public class Main2 {
 		public double millis; // this is the timestamp used for graphing
 		public double ellapsedMillis; // this is calculated at instantiation to be the elapsed time
 		public double energy;
-		
+
 		public static double lastMillis = 0;
 
 		public VehicleDataPoint(String[] data) {
@@ -196,14 +196,14 @@ public class Main2 {
 			this.power = Double.valueOf(data[4]);
 			this.loadVoltage = Double.valueOf(data[5]);
 			this.millis = Double.valueOf(data[6]);
-			this.ellapsedMillis = lastMillis - millis;
+			this.ellapsedMillis = (ellapsedMillis == 0) ? 500 : millis - lastMillis;
 			lastMillis = millis;
 			this.energy = this.energyCalculation();
 		}
 
 		// power * ellapsed time
 		public double energyCalculation() {
-			return power * ellapsedMillis;
+			return (power * ellapsedMillis) / 1000;
 		}
 	}
 
