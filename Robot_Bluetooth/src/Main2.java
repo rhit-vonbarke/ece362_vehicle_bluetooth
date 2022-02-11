@@ -24,7 +24,11 @@ public class Main2 {
 	public static boolean sPressed = false;
 	public static boolean kPressed = false;
 	public static double totalEnergy = 0; // use THIS for displaying total energy usage. this is not graphed
-
+	public static final char DATA_PREFIX = '#';
+	public static final char DEBUG_PREFIX = '~';
+	public static final char CMD_PREFIX = '!';
+	public static final char INFO_PREFIX = '?';
+	
 	public static void main(String[] args) {
 
 		// create and configure the window
@@ -162,13 +166,16 @@ public class Main2 {
 
 	public static VehicleDataPoint processInput(String input) {
 		switch (input.charAt(0)) {
-		case '#': // data
+		case DATA_PREFIX: // data
 			String[] dataSeg = input.split(":");
 			return new VehicleDataPoint(dataSeg);
-		case '!': // Command, car is starting or stopping
+		case DEBUG_PREFIX: // debug data
+			String[] debugDataSeg = input.split(":");
+			return new DebugVehicleDataPoint(debugDataSeg);
+		case CMD_PREFIX: // Command, car is starting or stopping
 			System.out.println("Car is Starting or Stopping");
 			return null;
-		case '?': // Getting information
+		case INFO_PREFIX: // Getting information
 			System.out.println("Car is Sending Information");
 			return null;
 		default:
@@ -177,12 +184,12 @@ public class Main2 {
 		}
 	}
 
+	/* 
+	 * Base class for data non-verbose data points
+	 * Constructor input is ["#", {power}, {millis}]
+	 */
 	public static class VehicleDataPoint {
-		public double shuntVoltage;
-		public double busVoltage;
-		public double current;
 		public double power;
-		public double loadVoltage;
 		public double millis; // this is the timestamp used for graphing
 		public double ellapsedMillis; // this is calculated at instantiation to be the elapsed time
 		public double energy;
@@ -190,12 +197,8 @@ public class Main2 {
 		public static double lastMillis = 0;
 
 		public VehicleDataPoint(String[] data) {
-			this.shuntVoltage = Double.valueOf(data[1]);
-			this.busVoltage = Double.valueOf(data[2]);
-			this.current = Double.valueOf(data[3]);
-			this.power = Double.valueOf(data[4]);
-			this.loadVoltage = Double.valueOf(data[5]);
-			this.millis = Double.valueOf(data[6]);
+			this.power = Double.valueOf(data[1]);
+			this.millis = Double.valueOf(data[2]);
 			this.ellapsedMillis = (ellapsedMillis == 0) ? 500 : millis - lastMillis;
 			lastMillis = millis;
 			this.energy = this.energyCalculation();
@@ -204,6 +207,26 @@ public class Main2 {
 		// power * ellapsed time
 		public double energyCalculation() {
 			return (power * ellapsedMillis) / 1000;
+		}
+	}
+	
+	/* 
+	 * Class for data verbose data points
+	 * Constructor input is ["#", {shuntVoltage}, {busVoltage}, 
+	 * 						{current}, {power}, {loadVoltage}, {millis}]
+	 */
+	public static class DebugVehicleDataPoint extends VehicleDataPoint {
+		public double shuntVoltage;
+		public double busVoltage;
+		public double current;
+		public double loadVoltage;
+		
+		public DebugVehicleDataPoint(String[] data) {
+			super(new String[] {"#", data[4], data[6]}); // formatted for superconstr.
+			this.shuntVoltage = Double.valueOf(data[1]);
+			this.busVoltage = Double.valueOf(data[2]);
+			this.current = Double.valueOf(data[3]);
+			this.loadVoltage = Double.valueOf(data[5]);
 		}
 	}
 
