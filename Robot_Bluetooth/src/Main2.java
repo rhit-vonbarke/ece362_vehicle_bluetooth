@@ -3,8 +3,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Scanner;
-import java.util.concurrent.TimeUnit;
+import java.io.UnsupportedEncodingException;
+import java.util.LinkedList;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
@@ -19,6 +19,10 @@ import com.fazecast.jSerialComm.SerialPort;
 public class Main2 {
 
 	public static final byte[] BT_NEWLINE = new byte[] { (byte) 0x0A };
+	public static LinkedList<Double> allPower = new LinkedList<Double>();
+	public static LinkedList<Double> allMillis = new LinkedList<Double>();
+	public static LinkedList<Double> allEllapsed = new LinkedList<Double>();
+	public static LinkedList<Double> allEnergy = new LinkedList<Double>();
 	static SerialPort chosenPort;
 	public static boolean flag = false;
 	public static boolean sPressed = false;
@@ -28,7 +32,7 @@ public class Main2 {
 	public static final char DEBUG_PREFIX = '~';
 	public static final char CMD_PREFIX = '!';
 	public static final char INFO_PREFIX = '?';
-	
+
 	public static void main(String[] args) {
 
 		// create and configure the window
@@ -45,12 +49,16 @@ public class Main2 {
 		JButton sButton = new JButton("Start Robot");
 		JButton dButton = new JButton("Debug Robot");
 		JButton kButton = new JButton("Kill Robot");
+		JButton saveData = new JButton("Save Run Data");
+		JButton totalEnergyButton = new JButton("Total Energy: --- mJ");
 		JPanel topPanel = new JPanel();
 		topPanel.add(portList);
 		topPanel.add(connectButton);
 		topPanel.add(sButton);
 		topPanel.add(dButton);
 		topPanel.add(kButton);
+		topPanel.add(saveData);
+		topPanel.add(totalEnergyButton);
 		window.add(topPanel, BorderLayout.NORTH);
 
 		// populate the drop-down box
@@ -116,6 +124,10 @@ public class Main2 {
 								}
 								System.out.println(builder.toString());
 								VehicleDataPoint newestPoint = processInput(builder.toString());
+								allPower.add(newestPoint.power);
+								allMillis.add(newestPoint.millis);
+								allEllapsed.add(newestPoint.ellapsedMillis);
+								allEnergy.add(newestPoint.energy);
 								if (newestPoint != null) {
 									System.out.println(newestPoint.energy);
 									if (!flag) {
@@ -125,8 +137,6 @@ public class Main2 {
 										series.add(newestPoint.millis / 1000, newestPoint.energy);
 									}
 									totalEnergy += newestPoint.energy;
-								} else {
-									System.out.println("NULL");
 								}
 								window.repaint();
 							}
@@ -160,6 +170,24 @@ public class Main2 {
 				kPressed = true;
 			}
 		});
+
+		totalEnergyButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				totalEnergyButton.setText("Total Energy: " + totalEnergy + " mJ");
+			}
+		});
+
+		saveData.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				try {
+					SaveEnergy.writeFile(allPower, allMillis, allEllapsed, allEnergy);
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+				}
+			}
+		});
 		// show the window
 		window.setVisible(true);
 	}
@@ -179,14 +207,14 @@ public class Main2 {
 			System.out.println("Car is Sending Information");
 			return null;
 		default:
-			System.out.println(input.charAt(0));
+			System.out.println("First char is: " + input.charAt(0));
 			return null;
 		}
 	}
 
-	/* 
-	 * Base class for data non-verbose data points
-	 * Constructor input is ["#", {power}, {millis}]
+	/*
+	 * Base class for data non-verbose data points Constructor input is ["#",
+	 * {power}, {millis}]
 	 */
 	public static class VehicleDataPoint {
 		public double power;
@@ -209,20 +237,19 @@ public class Main2 {
 			return (power * ellapsedMillis) / 1000;
 		}
 	}
-	
-	/* 
-	 * Class for data verbose data points
-	 * Constructor input is ["#", {shuntVoltage}, {busVoltage}, 
-	 * 						{current}, {power}, {loadVoltage}, {millis}]
+
+	/*
+	 * Class for data verbose data points Constructor input is ["#", {shuntVoltage},
+	 * {busVoltage}, {current}, {power}, {loadVoltage}, {millis}]
 	 */
 	public static class DebugVehicleDataPoint extends VehicleDataPoint {
 		public double shuntVoltage;
 		public double busVoltage;
 		public double current;
 		public double loadVoltage;
-		
+
 		public DebugVehicleDataPoint(String[] data) {
-			super(new String[] {"#", data[4], data[6]}); // formatted for superconstr.
+			super(new String[] { "#", data[4], data[6] }); // formatted for superconstr.
 			this.shuntVoltage = Double.valueOf(data[1]);
 			this.busVoltage = Double.valueOf(data[2]);
 			this.current = Double.valueOf(data[3]);
